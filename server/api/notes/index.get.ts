@@ -8,7 +8,7 @@ export default defineEventHandler(async (event) => {
                 userId: userId
             },
             orderBy: {
-                createdAt: 'asc'
+                createdAt: 'desc'
             },
             take: 200
         })
