@@ -66,11 +66,11 @@
    <div class="flex flex-col w-full p-9 overflow-y-auto">
         <div class="flex justify-between w-full items-center">
             <UButton @click="createNewNote" leading-icon="i-lucide-notebook-pen" class="dark:text-[#c2c2c5] text-gray-700 font-bold bg-transparent active:bg-transparent hover:bg-transparent cursor-pointer transition duration-300 hover:opacity-85">Create Note</UButton>
-            <UIcon @click="deleteNote" name="i-lucide-trash-2" class="dark:text-[#c2c2c5] cursor-pointer transition duration-300 hover:opacity-85" />
+            <UIcon v-if="selectedNote" @click="deleteNote" name="i-lucide-trash-2" class="dark:text-[#c2c2c5] cursor-pointer transition duration-300 hover:opacity-85" />
         </div>
         <div class="max-w-[530px] mx-auto  flex-1 w-full mt-5">
             <p v-if="selectedNote" class="dark:text-[#929292] font-semibold">{{ getPublishedDate(selectedNote.updatedAt) }}</p>
-            <UTextarea ref="textareaRef" v-model="updatedNote" name="note" id="note" :autoresize="true" variant="soft" :ui="{base: 'focus:bg-transparent text-justify w-full text-md p-0 hover:bg-transparent bg-transparent'}" class="dark:text-[#d4d4d4] font-sans my-4 mb-20 w-full focus:outline-none bg-transparent" @input="inputText" />
+            <UTextarea :disabled="!selectedNote" ref="textareaRef" v-model="updatedNote" name="note" id="note" :autoresize="true" variant="soft" :ui="{base: 'focus:bg-transparent text-justify w-full text-md p-0 hover:bg-transparent bg-transparent'}" class="dark:text-[#d4d4d4] font-sans my-4 mb-20 w-full focus:outline-none bg-transparent" @input="inputText" />
         </div>
         <UButton @click="logout" class="duration-500 transition w-fit text-xs hover:opacity-80 cursor-pointer self-end bg-amber-600 text-white active:bg-amber-600 hover:bg-amber-600" trailing-icon="i-lucide-log-out">Log out</UButton>
    </div>
@@ -85,7 +85,7 @@ definePageMeta({
     middleware: 'auth'
 })
 
-const {data: notes, error} = await useFetch<Note[]>('/api/notes', {deep: true})
+const {data: notes, error} = await useFetch<Note[]| []>('/api/notes', {deep: true})
 const toast = useToast()
 const selectedNote = ref<Note | undefined>(undefined)
 const updatedNote = ref<string>('')
@@ -121,7 +121,7 @@ const createNewNote = async () => {
             method: 'POST'
         })
 
-        notes.value?.unshift(res)
+        notes.value.unshift(res)
         selectedNote.value = notes.value[0]
         updatedNote.value = ''
         textareaRef.value.textareaRef.focus()
@@ -133,6 +133,9 @@ const createNewNote = async () => {
 }
 
 const inputText = () => {
+    if (!selectedNote.value || !notes.value) {
+        return
+    }
     blockSelect.value = true
     debouncedFn()
     selectedNote.value.text = updatedNote.value
@@ -144,13 +147,16 @@ const debouncedFn = useDebounceFn(async () => {
 
 const updateNote = async () => {
     try {
-        await $fetch(`/api/notes/${selectedNote.value?.id}`, {
+        if (!selectedNote.value || !notes.value) {
+            return
+        }
+        await $fetch(`/api/notes/${selectedNote.value.id}`, {
             method: 'patch',
             body: {
                 updatedNote: updatedNote.value
             }
         })
-        const ind = notes.value?.findIndex((note) => note.id === selectedNote.value?.id)
+        const ind = notes.value.findIndex((note) => note.id === selectedNote.value.id)
         selectedNote.value.updatedAt = new Date()
         notes.value[ind].updatedAt = new Date()
         notes.value[ind].text = updatedNote.value
@@ -164,20 +170,26 @@ const updateNote = async () => {
 
 const deleteNote = async () => {
     try {
-        await $fetch(`/api/notes/${selectedNote.value?.id}`, {
+        if (!selectedNote.value || !notes.value || blockSelect.value) {
+            return
+        }
+        await $fetch(`/api/notes/${selectedNote.value.id}`, {
             method: 'delete'
         })
-        const ind = notes.value?.findIndex((note) => note.id === selectedNote.value?.id)
-        notes.value?.splice(ind, 1)
+        const ind = notes.value?.findIndex((note) => note.id === selectedNote.value.id)
+        notes.value.splice(ind, 1)
         if (notes.value.length > 0) {
             selectNote(notes.value[0])
         } else {
+            updatedNote.value = ''
             selectedNote.value = undefined
         }
         toast.add({ title: 'Success', description: 'The notes was deleted', color: 'success'})
     } catch (error: any) {
         console.log(error)
         toast.add({ title: 'Error', description: error.response?._data.message, color: 'error'})
+    } finally {
+        blockSelect.value = false
     }
 }
 

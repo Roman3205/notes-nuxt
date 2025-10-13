@@ -5,7 +5,7 @@ export default defineEventHandler(async (event) => {
         const {userId} = event.context
 
         const id = getRouterParam(event, 'id')
-        console.log(id)
+
         await prisma.note.delete({
             where: {id: Number(id), userId: userId}
         })
