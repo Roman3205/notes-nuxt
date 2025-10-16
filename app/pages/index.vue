@@ -117,6 +117,10 @@ const selectNote = (note: Note) => {
 
 const createNewNote = async () => {
     try {
+        if (blockSelect.value) {
+            return
+        }
+        
         const res = await $fetch<Note>(`/api/notes`, {
             method: 'POST'
         })
@@ -127,8 +131,10 @@ const createNewNote = async () => {
         textareaRef.value.textareaRef.focus()
 
         toast.add({ title: 'Success', description: 'New note has been created', color: 'success'})
+        blockSelect.value = false
     } catch (error: any) {
         toast.add({ title: 'Error', description: error.response?._data.message, color: 'error'})
+        blockSelect.value = false
     }
 }
 
@@ -161,9 +167,9 @@ const updateNote = async () => {
         notes.value[ind].updatedAt = new Date()
         notes.value[ind].text = updatedNote.value
         notes.value = notes.value.sort((a:Note,b:Note) => new Date(b.updatedAt) - new Date(a.updatedAt))
+        blockSelect.value = false
     } catch (error: any) {
         toast.add({ title: 'Error', description: error.response?._data.message, color: 'error'})
-    } finally {
         blockSelect.value = false
     }
 }
@@ -185,10 +191,9 @@ const deleteNote = async () => {
             selectedNote.value = undefined
         }
         toast.add({ title: 'Success', description: 'The notes was deleted', color: 'success'})
+        blockSelect.value = false
     } catch (error: any) {
-        console.log(error)
         toast.add({ title: 'Error', description: error.response?._data.message, color: 'error'})
-    } finally {
         blockSelect.value = false
     }
 }
